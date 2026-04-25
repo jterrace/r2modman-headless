@@ -112,7 +112,7 @@ func (p *exportParserImpl) Parse(file string) (*ExportR2x, error) {
 			}
 
 			exportMetadata = &ExportR2x{
-				ProfileName: manifest.FullName,
+				ProfileName: manifest.Name,
 			}
 			for _, v := range manifest.Dependencies {
 				mod, err := ParseModString(v)

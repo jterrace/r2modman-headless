@@ -40,11 +40,9 @@ type ExportR2x struct {
 }
 
 type ModpackManifest struct {
-	Namespace     string   `json:"namespace"`
 	Name          string   `json:"name"`
 	Description   string   `json:"description"`
 	VersionNumber string   `json:"version_number"`
 	Dependencies  []string `json:"dependencies"`
 	WebsiteURL    string   `json:"website_url"`
-	FullName      string   `json:"FullName"`
 }
