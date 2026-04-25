@@ -44,7 +44,7 @@ func init() {
 
 	options = flags{}
 	flag.DurationVar(&options.runTimeout, "run-timeout", 5*time.Minute, "Total maximum runtime before giving up.")
-	flag.StringVar(&options.profileZip, "profile-zip", "", "Profile export to apply.")
+	flag.StringVar(&options.profileZip, "profile-zip", "", "Profile export or thunderstore mod pack zip to apply.")
 	flag.StringVar(&options.installDir, "install-dir", "", "Installation directory of the server.")
 	flag.BoolVar(&options.thunderstoreForceDownload, "thunderstore-force-download", false, "Force re-download of all mods, even if they are already present in the work directory.")
 	flag.StringVar(&options.thunderstoreCDNHost, "thunderstore-cdn-host", "gcdn.thunderstore.io", "Hostname of the thunderstore CDN to use.")

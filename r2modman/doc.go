@@ -38,3 +38,13 @@ type ExportR2x struct {
 	ProfileName string `yaml:"profileName"`
 	Mods        []ExportR2xMod
 }
+
+type ModpackManifest struct {
+	Namespace     string   `json:"namespace"`
+	Name          string   `json:"name"`
+	Description   string   `json:"description"`
+	VersionNumber string   `json:"version_number"`
+	Dependencies  []string `json:"dependencies"`
+	WebsiteURL    string   `json:"website_url"`
+	FullName      string   `json:"FullName"`
+}
