@@ -9,29 +9,26 @@ import (
 )
 
 type ModUtil interface {
-	Download(mod ExportR2xMod, metadata *APIPackageResponse) error
+	// Download fetches the mod zip from downloadURL into the work directory, unless a copy
+	// of the expected fileSize is already present.
+	Download(mod ExportR2xMod, downloadURL string, fileSize int64) error
 }
 
 type modUtilImpl struct {
 	config Config
 }
 
-func (m *modUtilImpl) verifyIntegrity(mod ExportR2xMod, metadata *APIPackageResponse) error {
+func (m *modUtilImpl) verifyIntegrity(mod ExportR2xMod, fileSize int64) error {
 	downloadedZipPath := m.config.WorkDirectory + "/" + mod.Filename()
 	existingModFile, err := os.Stat(downloadedZipPath)
 	if err != nil {
 		return fmt.Errorf("mod package %s did not exist", downloadedZipPath)
 	}
-	for _, thunderstoreVersion := range metadata.Versions {
-		if thunderstoreVersion.FullName == mod.ThunderstoreModVersion() {
-			log.Printf("Verifying integrity: %s", downloadedZipPath)
-			if thunderstoreVersion.FileSize == existingModFile.Size() {
-				return nil
-			}
-			log.Printf("File Integrity Failed: %s, expected size: %d bytes, actual size: %d bytes", mod.Filename(), thunderstoreVersion.FileSize, existingModFile.Size())
-
-		}
+	log.Printf("Verifying integrity: %s", downloadedZipPath)
+	if fileSize == existingModFile.Size() {
+		return nil
 	}
+	log.Printf("File Integrity Failed: %s, expected size: %d bytes, actual size: %d bytes", mod.Filename(), fileSize, existingModFile.Size())
 
 	//package did not validate, delete it
 	log.Printf("Removing invalid file: %s", downloadedZipPath)
@@ -43,20 +40,20 @@ func (m *modUtilImpl) verifyIntegrity(mod ExportR2xMod, metadata *APIPackageResp
 	return fmt.Errorf("mod package %s did not validate", downloadedZipPath)
 }
 
-func (m *modUtilImpl) Download(mod ExportR2xMod, metadata *APIPackageResponse) error {
+func (m *modUtilImpl) Download(mod ExportR2xMod, downloadURL string, fileSize int64) error {
 	downloadedZipPath := m.config.WorkDirectory + "/" + mod.Filename()
 
 	client := http.Client{
 		Timeout: m.config.ThunderstoreCDNTimeout,
 	}
 
-	err := m.verifyIntegrity(mod, metadata)
+	err := m.verifyIntegrity(mod, fileSize)
 	if err == nil && !m.config.ThunderstoreForceDownload {
 		return nil // file exists and validates
 	}
 
-	log.Printf("Downloading mod: %s", downloadedZipPath)
-	resp, err := client.Get(mod.DownloadUrl(m.config.ThunderstoreCDN))
+	log.Printf("Downloading mod: %s from %s", downloadedZipPath, downloadURL)
+	resp, err := client.Get(downloadURL)
 	if err != nil {
 		return err
 	}
@@ -79,7 +76,7 @@ func (m *modUtilImpl) Download(mod ExportR2xMod, metadata *APIPackageResponse) e
 		return err
 	}
 
-	return m.verifyIntegrity(mod, metadata)
+	return m.verifyIntegrity(mod, fileSize)
 }
 
 func newModUtil(

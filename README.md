@@ -6,6 +6,9 @@ Command line non-interactive mod loader for r2modman profile export zip files
 (from [r2modmanPlus](https://github.com/ebkr/r2modmanPlus)) and thunderstore mod pack
 zip files.
 
+Mods are downloaded from [hexium](https://valheim.hexium.gg/) when the exact version is
+published there, and from thunderstore otherwise.
+
 ## usage
 
 ```
@@ -13,6 +16,8 @@ r2modman-headless - Apply a profile export from r2modman to a dedicated server.
 Example:
         r2modman-headless --install-dir=serverfiles/ --work-dir=work/ --profile-zip=Profile.r2z
 Flags:
+-hexium-metadata-url string
+        URL to the hexium metadata API. Mods found here are preferred over thunderstore. Set to empty to disable. (default "https://valheim.hexium.gg/api/v1/package/")
 -install-dir string
         Installation directory of the server.
 -profile-zip string

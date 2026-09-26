@@ -16,6 +16,7 @@ import (
 )
 
 type flags struct {
+	hexiumMetadataURL           string
 	installDir                  string
 	profileZip                  string
 	runTimeout                  time.Duration
@@ -45,6 +46,7 @@ func init() {
 	options = flags{}
 	flag.DurationVar(&options.runTimeout, "run-timeout", 5*time.Minute, "Total maximum runtime before giving up.")
 	flag.StringVar(&options.profileZip, "profile-zip", "", "Profile export or thunderstore mod pack zip to apply.")
+	flag.StringVar(&options.hexiumMetadataURL, "hexium-metadata-url", "https://valheim.hexium.gg/api/v1/package/", "URL to the hexium metadata API. Mods found here are preferred over thunderstore. Set to empty to disable.")
 	flag.StringVar(&options.installDir, "install-dir", "", "Installation directory of the server.")
 	flag.BoolVar(&options.thunderstoreForceDownload, "thunderstore-force-download", false, "Force re-download of all mods, even if they are already present in the work directory.")
 	flag.StringVar(&options.thunderstoreCDNHost, "thunderstore-cdn-host", "gcdn.thunderstore.io", "Hostname of the thunderstore CDN to use.")
@@ -153,18 +155,49 @@ func run(
 
 	log.Printf("Found packages %d packages from thunderstore\n", len(packages))
 
+	var hexiumPackages map[string]*r2modman.APIPackageResponse
+	if options.hexiumMetadataURL != "" {
+		hexiumCtx, hexiumCtxCancel := context.WithTimeout(ctx, options.thunderstoreMetadataTimeout)
+		defer hexiumCtxCancel()
+
+		hexiumPackages, err = r2modman.GetPackagesMetadata(hexiumCtx, options.hexiumMetadataURL)
+		if err != nil {
+			log.Printf("unable to pull hexium api: %s", err)
+			return err
+		}
+		log.Printf("Found packages %d packages from hexium\n", len(hexiumPackages))
+	}
+
 	for _, v := range metadata.Mods {
 
 		log.Printf("processing %s\n", v.Name)
 
 		downloadedZipPath := path.Join(options.workDir, v.Filename())
 
-		thunderstoreMeta, ok := packages[v.ThunderstoreKey()]
-		if !ok {
-			return fmt.Errorf("thunderstore metadata does not exist for: %s", v.ThunderstoreKey())
+		// prefer hexium, fall back to thunderstore
+		var downloadURL string
+		var fileSize int64
+		found := false
+		if hexiumMeta, ok := hexiumPackages[v.ThunderstoreKey()]; ok {
+			downloadURL, fileSize, found = hexiumMeta.FindVersion(v.ThunderstoreModVersion())
+			if found {
+				log.Printf("Using hexium for %s", v.ThunderstoreModVersion())
+			}
+		}
+		if !found {
+			if thunderstoreMeta, ok := packages[v.ThunderstoreKey()]; ok {
+				_, fileSize, found = thunderstoreMeta.FindVersion(v.ThunderstoreModVersion())
+				downloadURL = v.DownloadUrl(options.thunderstoreCDNHost)
+				if found {
+					log.Printf("Using thunderstore for %s", v.ThunderstoreModVersion())
+				}
+			}
+		}
+		if !found {
+			return fmt.Errorf("neither hexium nor thunderstore has metadata for: %s", v.ThunderstoreModVersion())
 		}
 
-		err = modutil.Download(v, thunderstoreMeta)
+		err = modutil.Download(v, downloadURL, fileSize)
 		if err != nil {
 			return err
 		}
